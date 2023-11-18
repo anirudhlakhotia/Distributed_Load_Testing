@@ -8,6 +8,7 @@ bootstrap_servers = "localhost:9092"
 register_topic = "register"
 test_config_topic = "test_config"
 heartbeat_topic = "heartbeat"
+trigger_topic = "trigger"
 
 consumer = KafkaConsumer(
     register_topic,
@@ -46,6 +47,13 @@ def listen_to_heartbeat():
         print(f"Received heartbeat from node {node_id}")
 
 
+def send_trigger_message():
+    test_id = str(uuid.uuid4())
+    trigger_message = {"test_id": test_id, "trigger": "YES"}
+    producer.send(trigger_topic, value=trigger_message)
+    print(f"Sent trigger message to initiate the load test: {trigger_message}")
+
+
 try:
     heartbeat_thread = threading.Thread(target=listen_to_heartbeat)
     heartbeat_thread.daemon = True
@@ -62,8 +70,10 @@ try:
         )
 
         time.sleep(5)
-
         send_test_config_message()
+        time.sleep(2)
+        send_trigger_message()
+
 
 except KeyboardInterrupt:
     pass
