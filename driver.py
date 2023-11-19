@@ -4,6 +4,7 @@ import socket
 import sys
 import time
 import threading
+import random
 
 bootstrap_servers = "localhost:9092"
 register_topic = "register"
@@ -15,6 +16,13 @@ producer = KafkaProducer(
     bootstrap_servers=bootstrap_servers,
     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
 )
+
+def generate_unique_id():
+    prefix = "DRIVER_"
+    timestamp = int(time.time())
+    random_component = random.randint(1, 1000000)
+    unique_id = f"{prefix}{timestamp}_{random_component}"
+    return unique_id
 
 
 def get_node_ip():
@@ -61,7 +69,10 @@ def listen_to_trigger():
         print(f"Received trigger: {trigger_data}")
 
 
-def run(node_id):
+def run():
+    
+    node_id = generate_unique_id()
+
     consumer_thread = threading.Thread(target=consume_test_config)
     trigger_thread = threading.Thread(target=listen_to_trigger)
 
@@ -85,9 +96,10 @@ def run(node_id):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python3 driver.py <NODE ID>")
-        sys.exit(1)
+    #if len(sys.argv) != 2:
+    #    print("Usage: python3 driver.py <NODE ID>")
+    #    sys.exit(1)
 
-    node_id = sys.argv[1]
-    run(node_id)
+    #node_id = sys.argv[1]
+    #run(node_id)
+    run()
