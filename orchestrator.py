@@ -26,12 +26,14 @@ def send_test_config_message():
     test_id = str(uuid.uuid4())
     test_config_message = {
         "test_id": test_id,
-        "test_type": "AVALANCHE",
-        "test_message_delay": 0,
+        "test_type": "TSUNAMI",
+        "test_message_delay": 0.1,
         "message_count_per_driver": 100,
     }
     producer.send(test_config_topic, value=test_config_message)
     print(f"Sent test configuration message: {test_config_message}")
+    
+    return test_id
 
 
 def listen_to_heartbeat():
@@ -47,8 +49,7 @@ def listen_to_heartbeat():
         print(f"Received heartbeat from node {node_id}")
 
 
-def send_trigger_message():
-    test_id = str(uuid.uuid4())
+def send_trigger_message(test_id):
     trigger_message = {"test_id": test_id, "trigger": "YES"}
     producer.send(trigger_topic, value=trigger_message)
     print(f"Sent trigger message to initiate the load test: {trigger_message}")
@@ -70,9 +71,9 @@ try:
         )
 
         time.sleep(5)
-        send_test_config_message()
+        test_id=send_test_config_message()
         time.sleep(2)
-        send_trigger_message()
+        send_trigger_message(test_id)
 
 
 except KeyboardInterrupt:

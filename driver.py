@@ -5,6 +5,8 @@ import sys
 import time
 import threading
 import random
+import requests
+
 
 bootstrap_servers = "localhost:9092"
 register_topic = "register"
@@ -16,6 +18,26 @@ producer = KafkaProducer(
     bootstrap_servers=bootstrap_servers,
     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
 )
+
+test_configs = {}
+
+
+SERVER_IP = "localhost"
+SERVER_PORT = 5003
+
+PING_ENDPOINT = f"http://{SERVER_IP}:{SERVER_PORT}/ping"
+
+def send_request_to_server():
+    try:
+        response = requests.get(PING_ENDPOINT)
+        if response.status_code == 200:
+            print("Request successful. Response:", response.json())
+        else:
+            print(f"Request failed. Status Code: {response.status_code}")
+
+    except requests.RequestException as e:
+        print(f"Request Exception: {e}")
+
 
 def generate_unique_id():
     prefix = "DRIVER_"
@@ -54,7 +76,39 @@ def consume_test_config():
 
     for message in consumer:
         test_config_data = message.value
+        test_id = test_config_data["test_id"]
+
+        test_configs[test_id] = test_config_data
         print(f"Received test configuration: {test_config_data}")
+
+
+def avalanche_testing(test_id, message_count_per_driver):
+    for _ in range(message_count_per_driver):
+        send_request_to_server()
+
+
+def tsunami_testing(test_id, message_count_per_driver, delay_interval):
+    for _ in range(message_count_per_driver):
+        send_request_to_server()
+        time.sleep(delay_interval)
+
+
+def handle_test_config(test_id):
+    test_config = test_configs.get(test_id)
+
+    if test_config:
+        test_type = test_config["test_type"]
+        message_count_per_driver = test_config["message_count_per_driver"]
+        delay_interval = test_config.get("test_message_delay", 0)
+
+        if test_type == "AVALANCHE":
+            avalanche_testing(test_id, message_count_per_driver)
+        elif test_type == "TSUNAMI":
+            tsunami_testing(test_id, message_count_per_driver, delay_interval)
+        else:
+            print(f"Invalid test type: {test_type}")
+    else:
+        print(f"No test configuration found for test ID: {test_id}")
 
 
 def listen_to_trigger():
@@ -67,6 +121,9 @@ def listen_to_trigger():
     for message in consumer:
         trigger_data = message.value
         print(f"Received trigger: {trigger_data}")
+
+        test_id = trigger_data["test_id"]
+        handle_test_config(test_id)
 
 
 def run():
@@ -96,10 +153,5 @@ def run():
 
 
 if __name__ == "__main__":
-    #if len(sys.argv) != 2:
-    #    print("Usage: python3 driver.py <NODE ID>")
-    #    sys.exit(1)
-
-    #node_id = sys.argv[1]
-    #run(node_id)
+    
     run()
