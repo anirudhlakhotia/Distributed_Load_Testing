@@ -4,6 +4,8 @@ import socket
 import sys
 import time
 import threading
+import random
+import os
 
 bootstrap_servers = "localhost:9092"
 register_topic = "register"
@@ -16,6 +18,32 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
 )
 
+ID_FILE_PATH = "driver_node_id.txt"
+
+def generate_unique_id():
+    prefix = "DRIVER_"
+    timestamp = int(time.time())
+    random_component = random.randint(1, 1000000)
+    unique_id = f"{prefix}{timestamp}_{random_component}"
+    save_id_to_file(unique_id)
+    return unique_id
+
+def save_id_to_file(unique_id):
+    with open(ID_FILE_PATH, "w") as file:
+        file.write(unique_id)
+
+def get_stored_id():
+    try:
+        with open(ID_FILE_PATH, "r") as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        return None
+        
+def delete_id_file():
+    try:
+        os.remove(ID_FILE_PATH)
+    except FileNotFoundError:
+        pass
 
 def get_node_ip():
     return socket.gethostbyname(socket.gethostname())
@@ -61,7 +89,15 @@ def listen_to_trigger():
         print(f"Received trigger: {trigger_data}")
 
 
-def run(node_id):
+def run():
+    stored_id = get_stored_id()
+
+    if stored_id:
+        node_id = stored_id
+    else:
+        new_id = generate_unique_id()
+        node_id = new_id
+
     consumer_thread = threading.Thread(target=consume_test_config)
     trigger_thread = threading.Thread(target=listen_to_trigger)
 
@@ -82,12 +118,15 @@ def run(node_id):
     finally:
         producer.flush()
         producer.close()
+    
+    delete_id_file()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python3 driver.py <NODE ID>")
-        sys.exit(1)
+    #if len(sys.argv) != 2:
+    #    print("Usage: python3 driver.py <NODE ID>")
+    #    sys.exit(1)
 
-    node_id = sys.argv[1]
-    run(node_id)
+    #node_id = sys.argv[1]
+    #run(node_id)
+    run()
