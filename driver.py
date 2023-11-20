@@ -167,16 +167,18 @@ def tsunami_testing(test_id, message_count_per_driver, delay_interval, node_id):
     report_id = 1
 
     for _ in range(message_count_per_driver):
+        
+        latency = send_request_to_server()
+        if latency:
+            latencies.append(latency)
+            
         curr_time = time.perf_counter()
         
         if curr_time - last_time > 0.2:
             last_time = curr_time
             publish_metrics_async(latencies, node_id, test_id, report_id, "running")
             report_id += 1
-
-        latency = send_request_to_server()
-        if latency:
-            latencies.append(latency)
+        
         time.sleep(delay_interval)
     publish_metrics_async(latencies, node_id, test_id, report_id, "complete")
 
