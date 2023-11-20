@@ -4,6 +4,13 @@ import uuid
 import threading
 import time
 import statistics
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+app.secret_key = "secret_key"
+test_in_progress = "not_started"
+current_test_id = None
 
 bootstrap_servers = "localhost:9092"
 register_topic = "register"
@@ -34,13 +41,15 @@ exit_event = threading.Event()
 
 
 def check_driver_status():
-    global driver_status
+    global driver_status, test_in_progress
     while True:
         if (
             all(status == "complete" for status in driver_status.values())
             and driver_status
         ):
+            test_in_progress = "completed"
             print("All driver nodes have completed. Stopping test.")
+
             # Stop other threads and end the test here
             exit_event.set()
             break
@@ -48,7 +57,10 @@ def check_driver_status():
 
 
 def send_test_config_message():
+    global test_in_progress, current_test_id
+    test_in_progress = "in_progress"
     test_id = str(uuid.uuid4())
+    current_test_id = test_id
     test_config_message = {
         "test_id": test_id,
         "test_type": "TSUNAMI",
@@ -192,5 +204,40 @@ def run_orchestrator():
         producer.close()
 
 
+@app.route("/test/progress", methods=["GET"])
+def test_progress():
+    global test_in_progress, current_test_id
+    if test_in_progress == "not_started":
+        return jsonify({"status": "not_started"})
+    elif test_in_progress == "in_progress":
+        return jsonify({"status": "in_progress", "test_id": current_test_id})
+    elif test_in_progress == "completed":
+        return jsonify({"status": "completed"})
+
+
+# New route to control tests
+@app.route("/test/control", methods=["POST"])
+def control_test():
+    global test_configs
+    test_id = str(uuid.uuid4())
+    test_config_data = request.get_json()
+
+    # Add test_id to the test configuration
+    test_config_data["test_id"] = test_id
+
+    # Add the test configuration to the global dictionary
+    test_configs[test_id] = test_config_data
+    print(f"Received test configuration: {test_config_data}")
+
+    # Respond with the test_id
+    return jsonify({"test_id": test_id}), 200
+
+
 if __name__ == "__main__":
-    run_orchestrator()
+    # Run the Kafka orchestrator within a separate thread
+    kafka_thread = threading.Thread(target=run_orchestrator)
+    kafka_thread.daemon = True
+    kafka_thread.start()
+    print("Kafka orchestrator started successfully.")
+
+    app.run(debug=True, port=5001, use_reloader=False)
