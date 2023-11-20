@@ -28,6 +28,9 @@ SERVER_PORT = 5003
 
 PING_ENDPOINT = f"http://{SERVER_IP}:{SERVER_PORT}/ping"
 
+exit_event = threading.Event()
+
+
 def send_request_to_server():
     try:
         start_time = time.perf_counter()
@@ -159,6 +162,7 @@ def avalanche_testing(test_id, message_count_per_driver, node_id):
         if latency:
             latencies.append(latency)
     publish_metrics_async(latencies, node_id, test_id, report_id, "complete")
+    time.sleep(1)
 
 
 def tsunami_testing(test_id, message_count_per_driver, delay_interval, node_id):
@@ -181,6 +185,7 @@ def tsunami_testing(test_id, message_count_per_driver, delay_interval, node_id):
         
         time.sleep(delay_interval)
     publish_metrics_async(latencies, node_id, test_id, report_id, "complete")
+    time.sleep(1)
 
 
 
@@ -201,7 +206,10 @@ def handle_test_config(test_id, node_id):
     else:
         print(f"No test configuration found for test ID: {test_id}")
     
-    test_configs.pop(test_id)
+    print("Requests Allocated to this Driver have been completed. Cleaning up and terminating...")
+    
+    exit_event.set()
+    
 
 
 def listen_to_trigger(node_id):
@@ -234,7 +242,7 @@ def run():
 
     try:
         send_register_message(node_id)
-        while True:
+        while not exit_event.is_set():
             send_heartbeat(node_id)
             time.sleep(1)
 
