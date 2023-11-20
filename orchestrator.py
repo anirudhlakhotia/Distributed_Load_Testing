@@ -79,6 +79,7 @@ def send_trigger_message(test_id):
 
 def check_and_send_test_config():
     if len(registered_drivers) == NUM_DRIVERS:
+        time.sleep(5)
         test_id = send_test_config_message()
         time.sleep(2)
         send_trigger_message(test_id)
@@ -175,7 +176,6 @@ def run_orchestrator():
                 f"Received from 'register' topic: Node ID - {node_id}, Node IP - {node_IP}, Message Type - {message_type}"
             )
 
-            time.sleep(5)
             register_driver(node_id)
 
     except KeyboardInterrupt:
