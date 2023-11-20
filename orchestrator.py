@@ -30,6 +30,8 @@ registered_drivers = set()
 
 driver_status = {}
 
+exit_event = threading.Event()
+
 
 def check_driver_status():
     global driver_status
@@ -40,8 +42,9 @@ def check_driver_status():
         ):
             print("All driver nodes have completed. Stopping test.")
             # Stop other threads and end the test here
+            exit_event.set()
             break
-        time.sleep(5)
+        time.sleep(1)
 
 
 def send_test_config_message():
@@ -68,6 +71,8 @@ def listen_to_heartbeat():
     for heartbeat_message in heartbeat_consumer:
         heartbeat_data = heartbeat_message.value
         node_id = heartbeat_data.get("node_id")
+        if exit_event.is_set():
+            break
         # print(f"Received heartbeat from node {node_id}")
 
 
@@ -127,7 +132,7 @@ def calculate_aggregate_statistics():
 
 
 def calculate_and_print_aggregate_statistics():
-    while True:
+    while not exit_event.is_set():
         calculate_aggregate_statistics()
         time.sleep(0.1)
 
@@ -140,7 +145,7 @@ def listen_to_metrics():
         value_deserializer=lambda v: json.loads(v.decode("utf-8")) if v else None,
     )
 
-    while True:
+    while not exit_event.is_set():
         for metrics_message in metrics_consumer:
             metrics_data = metrics_message.value
             process_metrics_message(metrics_data)
