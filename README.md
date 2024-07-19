@@ -8,7 +8,8 @@ web server. This system will use Kafka as a communication service.
 
 ## Application Architecture
 
-![Application Architecture](image.png)
+![Application Architecture](https://github.com/user-attachments/assets/f4302dc4-a8bf-4a8d-af1b-4b6f68439fff)
+
 The orchestrator node and driver node are implemented as separate processes
 (you do not need to provision separate VMs for each)
 The Orchestrator node and the Driver node must communicate via Kafka (see
